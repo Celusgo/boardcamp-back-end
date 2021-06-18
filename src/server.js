@@ -249,9 +249,9 @@ app.post("/rentals", async (req, res) => {
 });
 
 app.get("/rentals", async (req, res) => {
-    const thisId = req.query;
+    const thisQuery = req.query;
     try {
-        if (thisId.customerId) {
+        if (thisQuery.customerId) {
             const thisResult = await connection.query(`
             SELECT rentals.*, 
             jsonb_build_object('name', customers.name, 'id', customers.id) AS customer,
@@ -260,8 +260,31 @@ app.get("/rentals", async (req, res) => {
             JOIN customers ON rentals."customerId" = customers.id
             JOIN games ON rentals."gameId" = games.id
             JOIN categories ON categories.id = games."categoryId"
-            WHERE customers.id = $1`, [thisId.customerId]);
-            res.send(thisResult.rows);
+            WHERE customers.id = $1`, [thisQuery.customerId]);
+            if(thisResult.rows.length !== 0){
+                res.send(thisResult.rows);
+            }
+            else{
+                res.status(404).send("Nenhum cliente com este ID alugou jogos!");
+            }
+            ;
+        }
+        else if (thisQuery.gameId) {
+            const thisResult = await connection.query(`
+            SELECT rentals.*, 
+            jsonb_build_object('name', customers.name, 'id', customers.id) AS customer,
+            jsonb_build_object('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game
+            FROM rentals 
+            JOIN customers ON rentals."customerId" = customers.id
+            JOIN games ON rentals."gameId" = games.id
+            JOIN categories ON categories.id = games."categoryId"
+            WHERE games.id = $1`, [thisQuery.gameId]);
+            if(thisResult.rows.length !== 0){
+                res.send(thisResult.rows);
+            }
+            else{
+                res.status(404).send("Nenhum jogo com este ID foi alugado!");
+            }
         }
         else {
             const allRentals = await connection.query(`
@@ -273,7 +296,12 @@ app.get("/rentals", async (req, res) => {
             JOIN games ON rentals."gameId" = games.id
             JOIN categories ON categories.id = games."categoryId"
         `);
+        if(allRentals.rows.length !== 0){
             res.send(allRentals.rows);
+        }
+        else{
+            res.status(404).send("Nenhum jogo alugado ainda!");
+        }
         }
     } catch {
         res.status(400).send("Ocorreu um erro. Por favor, tente novamente!");
