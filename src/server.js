@@ -248,6 +248,81 @@ app.post("/rentals", async (req, res) => {
     };
 });
 
+app.get("/rentals", async (req, res) => {
+    const thisId = req.query;
+    try {
+        if (thisId.customerId) {
+            const thisResult = await connection.query(`
+            SELECT rentals.*, 
+            jsonb_build_object('name', customers.name, 'id', customers.id) AS customer,
+            jsonb_build_object('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game
+            FROM rentals 
+            JOIN customers ON rentals."customerId" = customers.id
+            JOIN games ON rentals."gameId" = games.id
+            JOIN categories ON categories.id = games."categoryId"
+            WHERE customers.id = $1`, [thisId.customerId]);
+            res.send(thisResult.rows);
+        }
+        else {
+            const allRentals = await connection.query(`
+            SELECT rentals.*, 
+            jsonb_build_object('name', customers.name, 'id', customers.id) AS customer,
+            jsonb_build_object('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game
+            FROM rentals 
+            JOIN customers ON rentals."customerId" = customers.id
+            JOIN games ON rentals."gameId" = games.id
+            JOIN categories ON categories.id = games."categoryId"
+        `);
+            res.send(allRentals.rows);
+        }
+    } catch {
+        res.status(400).send("Ocorreu um erro. Por favor, tente novamente!");
+    }
+});
+
+app.post("/rentals/:id/return", async (req, res) => {
+    const returnGame = req.params;
+    try {
+        const checkReturn = await connection.query('SELECT * FROM rentals WHERE id = $1', [returnGame.id]);
+        if (checkReturn.rows.length === 0) {
+            res.status(404).send("Não existe nenhum jogo com este ID a ser retornado!");
+            return;
+        }
+        else if (checkReturn.rows[0].returnDate) {
+            res.status(400).send("Este aluguel já foi retornado!");
+            return;
+        }
+        const daysDifference = dayjs('2021-06-22').diff(checkReturn.rows[0].rentDate, 'day');
+        const delayFee = daysDifference > checkReturn.rows[0].daysRented
+            ? (daysDifference - checkReturn.rows[0].daysRented) * (checkReturn.rows[0].originalPrice / checkReturn.rows[0].daysRented)
+            : 0;
+        await connection.query('UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3', [dayjs().format('YYYY-MM-DD'), delayFee, returnGame.id]);
+        res.sendStatus(200);
+    } catch {
+        res.status(400).send("Ocorreu um erro. Por favor, tente novamente!");
+    };
+});
+
+app.delete("/rentals/:id", async (req, res) => {
+    const deleteThis = req.params;
+
+    try {
+        const checkDeletion = await connection.query('SELECT * FROM rentals WHERE id = $1', [deleteThis.id]);
+        if (checkDeletion.rows.length === 0) {
+            res.status(404).send("Não há nenhum jogo com este ID para ser deletado!")
+            return;
+        }
+        else if (checkDeletion.rows[0].returnDate) {
+            res.status(400).send("Este aluguel já foi finalizado!");
+            return;
+        }
+        await connection.query('DELETE FROM rentals WHERE id = $1', [deleteThis.id]);
+        res.sendStatus(200);
+    } catch {
+        res.status(400).send("Ocorreu um erro. Por favor, tente novamente!");
+    };
+});
+
 app.listen(4000, () => {
     console.log("Rodando na porta 4000!");
 });
