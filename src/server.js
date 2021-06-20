@@ -261,10 +261,10 @@ app.get("/rentals", async (req, res) => {
             JOIN games ON rentals."gameId" = games.id
             JOIN categories ON categories.id = games."categoryId"
             WHERE customers.id = $1`, [thisQuery.customerId]);
-            if(thisResult.rows.length !== 0){
+            if (thisResult.rows.length !== 0) {
                 res.send(thisResult.rows);
             }
-            else{
+            else {
                 res.status(404).send("Nenhum cliente com este ID alugou jogos!");
             }
             ;
@@ -279,10 +279,10 @@ app.get("/rentals", async (req, res) => {
             JOIN games ON rentals."gameId" = games.id
             JOIN categories ON categories.id = games."categoryId"
             WHERE games.id = $1`, [thisQuery.gameId]);
-            if(thisResult.rows.length !== 0){
+            if (thisResult.rows.length !== 0) {
                 res.send(thisResult.rows);
             }
-            else{
+            else {
                 res.status(404).send("Nenhum jogo com este ID foi alugado!");
             }
         }
@@ -296,12 +296,12 @@ app.get("/rentals", async (req, res) => {
             JOIN games ON rentals."gameId" = games.id
             JOIN categories ON categories.id = games."categoryId"
         `);
-        if(allRentals.rows.length !== 0){
-            res.send(allRentals.rows);
-        }
-        else{
-            res.status(404).send("Nenhum jogo alugado ainda!");
-        }
+            if (allRentals.rows.length !== 0) {
+                res.send(allRentals.rows);
+            }
+            else {
+                res.status(404).send("Nenhum jogo alugado ainda!");
+            }
         }
     } catch {
         res.status(400).send("Ocorreu um erro. Por favor, tente novamente!");
@@ -320,7 +320,7 @@ app.post("/rentals/:id/return", async (req, res) => {
             res.status(400).send("Este aluguel já foi retornado!");
             return;
         }
-        const daysDifference = dayjs('2021-06-22').diff(checkReturn.rows[0].rentDate, 'day');
+        const daysDifference = dayjs().diff(checkReturn.rows[0].rentDate, 'day');
         const delayFee = daysDifference > checkReturn.rows[0].daysRented
             ? (daysDifference - checkReturn.rows[0].daysRented) * (checkReturn.rows[0].originalPrice / checkReturn.rows[0].daysRented)
             : 0;
